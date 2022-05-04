@@ -63,11 +63,16 @@ function vertically_align_text(layer, reference_layer) {
      * Rasterises a given text layer and centres it vertically with respect to the bounding box of a reference layer.
      */
 
-    layer.rasterize(RasterizeType.TEXTCONTENTS);
+    var layer_copy = layer.duplicate(activeDocument, ElementPlacement.INSIDE);
+    layer_copy.rasterize(RasterizeType.TEXTCONTENTS);
     select_layer_pixels(reference_layer);
-    app.activeDocument.activeLayer = layer;
-    align_vertical(layer);
+    app.activeDocument.activeLayer = layer_copy;
+    align_vertical(layer_copy);
     clear_selection();
+    var layer_dimensions = compute_text_layer_bounds(layer);
+    var layer_copy_dimensions = compute_text_layer_bounds(layer_copy);
+    layer.translate(0, layer_copy_dimensions[1].as("px") - layer_dimensions[1].as("px"));
+    layer_copy.remove();
 }
 
 function vertically_nudge_creature_text(layer, reference_layer, top_reference_layer) {
@@ -78,7 +83,9 @@ function vertically_nudge_creature_text(layer, reference_layer, top_reference_la
     // if the layer needs to be nudged
     if (layer.bounds[2].as("px") >= reference_layer.bounds[0].as("px")) {
         select_layer_pixels(reference_layer);
-        app.activeDocument.activeLayer = layer;
+        var rasterised_copy = layer.duplicate();
+        rasterised_copy.rasterize(RasterizeType.ENTIRELAYER);
+        app.activeDocument.activeLayer = rasterised_copy;
 
         // the copied bit of the text layer within the PT box will be inserted into a layer with this name
         var extra_bit_layer_name = "Extra Bit";
@@ -276,16 +283,8 @@ var FormattedTextArea = Class({
             // resize the text until it fits into the reference layer
             scale_text_to_fit_reference(this.layer, this.reference_layer);
 
-            // rasterise and centre vertically
+            // centre vertically
             vertically_align_text(this.layer, this.reference_layer);
-
-            if (this.is_centred) {
-                // ensure the layer is centred horizontally as well
-                select_layer_pixels(this.reference_layer);
-                app.activeDocument.activeLayer = this.layer;
-                align_horizontal();
-                clear_selection();
-            }
         }
     }
 });
